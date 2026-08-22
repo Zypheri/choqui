@@ -53,11 +53,11 @@ export function CapturaFotoForm({ siniestroId, tipo }: CapturaFotoFormProps) {
       const foto: FotoInsert = {
         siniestro_id: siniestroId,
         tipo,
+        url: storagePath,
         lat: position.coords.latitude,
         lng: position.coords.longitude,
         captured_at: capturedAt,
         fuente: "mini_app",
-        storage_path: storagePath,
       };
 
       const { error: insertError } = await supabase.from("fotos").insert(foto);
@@ -89,7 +89,9 @@ export function CapturaFotoForm({ siniestroId, tipo }: CapturaFotoFormProps) {
   return (
     <div className="space-y-4">
       <label className="flex cursor-pointer flex-col items-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-10 hover:border-blue-400 hover:bg-blue-50">
-        <span className="mb-2 text-4xl">📷</span>
+        <span className="mb-2 text-4xl" aria-hidden>
+          📷
+        </span>
         <span className="text-sm font-medium text-gray-700">
           {status === "uploading" ? "Subiendo foto…" : "Tocá para sacar foto"}
         </span>

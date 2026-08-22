@@ -42,6 +42,9 @@ CREATE TABLE public.siniestros (
         'inicio'::text,
         'hay_heridos_check'::text,
         'pidiendo_patente'::text,
+        'pidiendo_relato'::text,
+        'pidiendo_ubicacion_mapa'::text,
+        'pidiendo_documentacion'::text,
         'pidiendo_foto_patente_otro'::text,
         'pidiendo_foto_danio_propio'::text,
         'pidiendo_datos_otro_conductor'::text,
@@ -60,6 +63,7 @@ CREATE TABLE public.siniestros (
   ),
   hay_heridos boolean,
   datos_otro_conductor jsonb,
+  datos_accidente jsonb,
   ubicacion_reportada_lat double precision,
   ubicacion_reportada_lng double precision,
   ubicacion_reportada_at timestamptz,
@@ -79,7 +83,25 @@ CREATE TABLE public.fotos (
   id uuid PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
   siniestro_id uuid NOT NULL REFERENCES public.siniestros (id),
   tipo text NOT NULL CHECK (
-    tipo = ANY (ARRAY['patente_otro'::text, 'danio_propio'::text, 'carnet'::text, 'seguro_otro'::text])
+    tipo = ANY (
+      ARRAY[
+        'patente_otro'::text,
+        'danio_propio'::text,
+        'carnet'::text,
+        'seguro_otro'::text,
+        'dni_asegurado'::text,
+        'cedula_verde_asegurado'::text,
+        'licencia_asegurado'::text,
+        'dni_tercero'::text,
+        'cedula_verde_tercero'::text,
+        'licencia_tercero'::text,
+        'vista_frontal'::text,
+        'vista_lateral_izq'::text,
+        'vista_lateral_der'::text,
+        'vista_trasera'::text,
+        'danios'::text
+      ]
+    )
   ),
   url text NOT NULL,
   fuente text NOT NULL DEFAULT 'whatsapp'::text CHECK (
@@ -120,6 +142,9 @@ CREATE INDEX idx_siniestros_usuario_pendiente ON public.siniestros (usuario_id, 
       'inicio'::text,
       'hay_heridos_check'::text,
       'pidiendo_patente'::text,
+      'pidiendo_relato'::text,
+      'pidiendo_ubicacion_mapa'::text,
+      'pidiendo_documentacion'::text,
       'pidiendo_foto_patente_otro'::text,
       'pidiendo_foto_danio_propio'::text,
       'pidiendo_datos_otro_conductor'::text,
@@ -186,6 +211,22 @@ CREATE POLICY "operadores ven polizas"
   ON public.polizas
   FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.operadores WHERE id = auth.uid()));
+
+CREATE POLICY "mini_app inserta fotos"
+  ON public.fotos
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (
+    fuente = 'mini_app'
+    AND EXISTS (SELECT 1 FROM public.siniestros WHERE id = siniestro_id)
+  );
+
+CREATE POLICY "mini_app actualiza ubicacion"
+  ON public.siniestros
+  FOR UPDATE
+  TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
 
 -- ---------------------------------------------------------------------------
 -- Realtime

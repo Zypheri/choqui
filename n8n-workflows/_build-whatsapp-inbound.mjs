@@ -30,33 +30,45 @@ Sos Choqui, el asistente de WhatsApp que ayuda a alguien justo después de un ch
 
 # El flujo que tenés que seguir (en este orden, sin saltear pasos)
 
-1. **Heridos primero, siempre.** Si el campo 'Hay heridos registrado' está vacío/null, tu primera prioridad es preguntar si hay heridos. Si el usuario dice que sí, tu ÚNICA respuesta es indicarle que llame inmediatamente al 911 o a emergencias, y usar la tool para marcar hay_heridos=true y estado='requiere_info'. No sigas con el checklist de fotos en ese caso.
+1. **Heridos primero, siempre.** Si 'Hay heridos registrado' está vacío/null, preguntá si hay heridos. Si dice que sí: indicá llamar al 911, marcá hay_heridos=true y estado='requiere_info' con la tool. No sigas con el resto del flujo.
 
-2. **Si no hay heridos**, guiá el checklist de fotos EN ESTE ORDEN, pidiendo una por vez, usando el link de la mini-app (nunca le pidas que mande la foto directo por este chat, porque WhatsApp le borra los metadatos que necesitamos para verificar):
-   - patente_otro (patente del otro vehículo)
-   - danio_propio (daño en su propio auto)
-   - carnet (carnet de conducir)
-   - seguro_otro (seguro del otro conductor, si lo tiene a mano)
+2. **Relato del accidente por WhatsApp** (una pregunta por mensaje). Completá datos_accidente con la tool (mergeá lo que ya haya):
+   - que: qué pasó
+   - como: cómo ocurrió
+   - cuando: cuándo ocurrió
+   Estado: 'pidiendo_relato' mientras falte alguno.
 
-   Mirá el campo 'Fotos' del contexto para saber cuáles ya están subidas y cuáles faltan. No pidas de nuevo una que ya figure como subida.
+3. **Dónde (mapa, no texto).** Cuando el relato esté completo, mandá SOLO el link de la mini-app de mapa:
+   {vercel_app_url}/captura/{siniestro_id}/ubicacion
+   Pedile que marque el punto y confirme. Estado: 'pidiendo_ubicacion_mapa'. No le pidas la dirección por chat. Mirá el contexto: si ya hay ubicación reportada, no vuelvas a pedir el mapa.
 
-3. **Datos del otro conductor**: en algún momento del checklist (podés intercalarlo con las fotos si el usuario ya te los está dando) pedile nombre, y si la tiene, aseguradora del otro conductor. Guardalo con la tool cuando lo tengas.
+4. **Documentación y fotos SOLO por mini-app** (nunca por este chat; WhatsApp borra metadatos). Estado: 'pidiendo_documentacion'. Mandá un link por vez:
+   {vercel_app_url}/captura/{siniestro_id}/{tipo}
+   Orden:
+   a) Asegurado (obligatorio): dni_asegurado, cedula_verde_asegurado (cédula verde del auto), licencia_asegurado
+   b) Tercero (si existe / si los tiene a mano): dni_tercero, cedula_verde_tercero, licencia_tercero — si no tiene, anotarlo en datos_otro_conductor y seguir
+   c) Escena del vehículo: vista_frontal, vista_lateral_izq, vista_lateral_der, vista_trasera
+   d) Daños: danios
+   Mirá 'Fotos' del contexto: no pidas de nuevo una ya subida.
 
-4. **Cuando las 4 fotos estén subidas y validadas, y tengas los datos del otro conductor**, avisale que ya tenés todo, agradecele, y marcá el estado como 'generando_resumen' con la tool.
+5. **Datos del tercero** (nombre / aseguradora) por texto si aparecen; guardalos en datos_otro_conductor.
+
+6. **Cierre.** Cuando tengas relato completo (que/como/cuando), ubicación en mapa, docs mínimos del asegurado, las 4 vistas y danios: avisá que ya está, agradecé, y estado='generando_resumen'.
 
 # Tus tools
 
-Tenés una tool para actualizar el siniestro en la base de datos (cambiar estado, marcar hay_heridos, o guardar datos_otro_conductor). Usala cada vez que el flujo avance a un paso nuevo — no confíes solo en tu propia memoria de la charla, el estado real vive en la base de datos.
+Tenés una tool para actualizar el siniestro (estado, hay_heridos, datos_otro_conductor, datos_accidente). Usala cada vez que avance un paso — el estado real vive en la base.
 
 # Límites
 
-- Nunca inventes que una foto fue recibida si no figura como subida en el contexto.
-- Si el usuario te manda una foto directo por este chat (vas a ver una nota indicándolo en el mensaje), recordale amablemente que tiene que usar el link de la mini-app para que la foto quede verificada.
-- Si el usuario pregunta algo fuera de este flujo (ej: cuánto tarda el reclamo, qué cubre su póliza), respondé con honestidad que no tenés esa info ahora pero que un operador la va a revisar, y seguí con el checklist.
-- No uses la tool para inventar cambios de estado que el flujo no pide — seguí el orden.`;
+- Nunca inventes que una foto o la ubicación fueron recibidas si el contexto no lo muestra.
+- Si manda foto directo por este chat, pedile el link de la mini-app.
+- Fuera de tema (plazos, cobertura): no tenés esa info; un operador lo revisa; volvé al checklist.
+- No inventes cambios de estado fuera de este flujo.`;
 
 const CLASIFICAR_JS = `const PENDIENTES = new Set([
-  'inicio','hay_heridos_check','pidiendo_patente','pidiendo_foto_patente_otro',
+  'inicio','hay_heridos_check','pidiendo_patente','pidiendo_relato','pidiendo_ubicacion_mapa',
+  'pidiendo_documentacion','pidiendo_foto_patente_otro',
   'pidiendo_foto_danio_propio','pidiendo_datos_otro_conductor','pidiendo_foto_carnet_seguro',
   'pidiendo_ubicacion','generando_resumen','esperando_decision_pendiente'
 ]);
@@ -178,27 +190,43 @@ if (pendiente) {
 return [{ json: { ...base, accion: 'pedir_patente' } }];
 `;
 
-const RESUMIR_JS = `const fotos = $input.all().map(i => i.json).filter(x => x && x.tipo);
-const tipos = ['patente_otro', 'danio_propio', 'carnet', 'seguro_otro'];
+const RESUMIR_JS = `const fotos = $('Buscar fotos ya subidas').all().map(i => i.json).filter(x => x && x.tipo);
+const tipos = [
+  'dni_asegurado','cedula_verde_asegurado','licencia_asegurado',
+  'dni_tercero','cedula_verde_tercero','licencia_tercero',
+  'vista_frontal','vista_lateral_izq','vista_lateral_der','vista_trasera','danios'
+];
 const resumen = tipos.map(t => {
   const f = fotos.find(x => x.tipo === t);
   if (!f) return \`\${t}: no subida\`;
-  return \`\${t}: \${f.validada ? 'subida y validada' : 'subida, pendiente de validar'}\`;
+  return \`\${t}: \${f.validada ? 'subida y validada' : 'subida (geo+timestamp)'}\`;
 }).join(' | ');
 
-const s = $('Merge siniestro').first().json;
+const detalle = $('Cargar siniestro detalle').first().json || {};
+const merge = $('Merge siniestro').first().json;
+const siniestro_id = merge.siniestro_id || detalle.id;
 const vercel = $env.VERCEL_APP_URL || 'https://choqui.vercel.app';
+
+const da = detalle.datos_accidente || {};
+const relato = 'que=' + (da.que || '(falta)') + '; como=' + (da.como || '(falta)') + '; cuando=' + (da.cuando || '(falta)');
+const ubicacion = (detalle.ubicacion_reportada_lat != null && detalle.ubicacion_reportada_lng != null)
+  ? (detalle.ubicacion_reportada_lat + ',' + detalle.ubicacion_reportada_lng)
+  : 'sin marcar';
 
 return [{
   json: {
     telefono: $('Concatenar mensajes').first().json.telefono,
     mensaje_texto: $('Concatenar mensajes').first().json.mensaje_texto,
-    siniestro_id: s.siniestro_id,
-    estado: s.estado,
-    hay_heridos: s.hay_heridos,
-    datos_otro_conductor: s.datos_otro_conductor,
+    siniestro_id,
+    estado: detalle.estado || merge.estado,
+    hay_heridos: detalle.hay_heridos ?? merge.hay_heridos,
+    datos_otro_conductor: detalle.datos_otro_conductor ?? merge.datos_otro_conductor,
+    datos_accidente: da,
+    relato_resumen: relato,
+    ubicacion_reportada: ubicacion,
     fotos_resumen: resumen,
     vercel_app_url: vercel,
+    link_mapa: vercel + '/captura/' + siniestro_id + '/ubicacion',
   }
 }];
 `;
@@ -1053,6 +1081,29 @@ return [{ json: { siniestro_id: s.id, estado: s.estado, hay_heridos: s.hay_herid
     },
   }),
   node({
+    id: "a1000001-0001-4000-8000-000000000080",
+    name: "Cargar siniestro detalle",
+    type: "n8n-nodes-base.supabase",
+    typeVersion: 1,
+    position: [9376, 9968],
+    alwaysOutputData: true,
+    credentials: SUPABASE,
+    parameters: {
+      operation: "getAll",
+      tableId: "siniestros",
+      limit: 1,
+      filters: {
+        conditions: [
+          {
+            keyName: "id",
+            condition: "eq",
+            keyValue: "={{ $('Merge siniestro').item.json.siniestro_id }}",
+          },
+        ],
+      },
+    },
+  }),
+  node({
     id: "629d3419-a06a-4bed-8f86-0d14345a90a5",
     name: "Buscar fotos ya subidas",
     type: "n8n-nodes-base.supabase",
@@ -1069,7 +1120,7 @@ return [{ json: { siniestro_id: s.id, estado: s.estado, hay_heridos: s.hay_herid
           {
             keyName: "siniestro_id",
             condition: "eq",
-            keyValue: "={{ $json.siniestro_id }}",
+            keyValue: "={{ $('Merge siniestro').item.json.siniestro_id }}",
           },
         ],
       },
@@ -1091,7 +1142,7 @@ return [{ json: { siniestro_id: s.id, estado: s.estado, hay_heridos: s.hay_herid
     position: [9936, 9968],
     parameters: {
       promptType: "define",
-      text: "={{ 'Estado actual del siniestro: ' + $json.estado + '\\nHay heridos registrado: ' + $json.hay_heridos + '\\nFotos: ' + $json.fotos_resumen + '\\nLink base de la mini-app de captura: ' + $json.vercel_app_url + '/captura/' + $json.siniestro_id + '/[tipo]' + '\\n\\nMensaje del usuario: ' + $json.mensaje_texto }}",
+      text: "={{ 'Estado: ' + $json.estado + '\\nHay heridos: ' + $json.hay_heridos + '\\nRelato: ' + $json.relato_resumen + '\\nUbicacion mapa: ' + $json.ubicacion_reportada + '\\nLink mapa: ' + $json.link_mapa + '\\nFotos: ' + $json.fotos_resumen + '\\nLink fotos: ' + $json.vercel_app_url + '/captura/' + $json.siniestro_id + '/[tipo]' + '\\n\\nMensaje del usuario: ' + $json.mensaje_texto }}",
       options: { systemMessage: AGENT_SYSTEM },
     },
   }),
@@ -1131,6 +1182,7 @@ return [{ json: { siniestro_id: s.id, estado: s.estado, hay_heridos: s.hay_herid
           { fieldId: "estado", fieldValue: "=" },
           { fieldId: "hay_heridos", fieldValue: "=" },
           { fieldId: "datos_otro_conductor", fieldValue: "=" },
+          { fieldId: "datos_accidente", fieldValue: "=" },
         ],
       },
     },
@@ -1223,7 +1275,8 @@ connect("Clear await (patente ok)", "Crear siniestro");
 connect("Crear siniestro", "Siniestro creado");
 connect("Siniestro creado", "Merge siniestro");
 
-connect("Merge siniestro", "Buscar fotos ya subidas");
+connect("Merge siniestro", "Cargar siniestro detalle");
+connect("Cargar siniestro detalle", "Buscar fotos ya subidas");
 connect("Buscar fotos ya subidas", "Resumir contexto");
 connect("Resumir contexto", "Agente Choqui");
 connect("Agente Choqui", "Send an SMS/MMS/WhatsApp message");

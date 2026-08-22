@@ -9,6 +9,7 @@ Workflow de WhatsApp inbound con:
    - inactivo menos de 24h → continúa sin preguntar
    - inactivo entre 24h y 30d → pregunta *continuar* / *nuevo*
    - inactivo más de 30d → marca `abandonado` y pide patente para un caso nuevo
+3. **Agente Choqui**: relato por WPP (qué/cómo/cuándo → `datos_accidente`), mapa en `/captura/{id}/ubicacion`, fotos/docs solo por mini-app.
 
 ### Redis
 
