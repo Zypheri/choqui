@@ -1,0 +1,2273 @@
+{
+  "name": "Choqui WhatsApp inbound (patente + gracia)",
+  "nodes": [
+    {
+      "typeVersion": 2,
+      "position": [
+        2848,
+        9904
+      ],
+      "id": "84c33373-536a-4eae-9f5f-e1f646010237",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-inbound",
+        "options": {}
+      },
+      "webhookId": "9deb3466-54e7-4865-83c0-17cd1db9a4c2"
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        3072,
+        9904
+      ],
+      "id": "e3d1d5a9-e8b1-4b18-81a8-ba517f72ea20",
+      "name": "Datos",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst numMedia = parseInt(body.NumMedia || '0', 10);\nreturn [{\n  json: {\n    telefono: (body.From || '').replace('whatsapp:', ''),\n    message_id: body.MessageSid || body.SmsMessageSid || '',\n    body_text: body.Body || '',\n    num_media: numMedia,\n    media_content_type0: body.MediaContentType0 || '',\n    media_url0: numMedia > 0 ? body.MediaUrl0 : null\n  }\n}];"
+      }
+    },
+    {
+      "typeVersion": 3,
+      "position": [
+        3296,
+        9888
+      ],
+      "id": "c1856b69-4e41-44d0-b2db-c14d2a5cc4e5",
+      "name": "Tipo mensaje",
+      "type": "n8n-nodes-base.switch",
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.num_media }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    },
+                    "id": "a1"
+                  },
+                  {
+                    "leftValue": "={{ $json.media_content_type0 }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "a2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.num_media }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    },
+                    "id": "i1"
+                  },
+                  {
+                    "leftValue": "={{ $json.media_content_type0 }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "i2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "imagen"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "texto"
+        }
+      }
+    },
+    {
+      "typeVersion": 4.2,
+      "position": [
+        3520,
+        9712
+      ],
+      "id": "82585783-5cb3-474f-94a3-4cefb880fbbf",
+      "name": "Descargar audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "url": "={{ $json.media_url0 }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "whatsapp_audio"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "ODM0npfGyMf0cKRK",
+          "name": "Form AXIS"
+        }
+      }
+    },
+    {
+      "typeVersion": 1.8,
+      "position": [
+        3744,
+        9712
+      ],
+      "id": "61e61a41-2a62-4605-8498-3781276da42c",
+      "name": "Transcribir audio",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "whatsapp_audio",
+        "options": {
+          "language": "es"
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "cR3FsfLU8pTufVkv",
+          "name": "OpenAi Zypheri"
+        }
+      }
+    },
+    {
+      "typeVersion": 3.4,
+      "position": [
+        3968,
+        9712
+      ],
+      "id": "9931fd61-8158-4d82-a1f0-75adefa125c4",
+      "name": "Mensaje desde audio",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "telefono",
+              "type": "string",
+              "value": "={{ $('Datos').item.json.telefono }}"
+            },
+            {
+              "id": "e2",
+              "name": "message_id",
+              "type": "string",
+              "value": "={{ $('Datos').item.json.message_id }}"
+            },
+            {
+              "id": "e3",
+              "name": "mensaje",
+              "type": "string",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "id": "e4",
+              "name": "es_imagen_directa",
+              "type": "boolean",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 3.4,
+      "position": [
+        3968,
+        9904
+      ],
+      "id": "80e1cf50-d8be-4318-b2ec-35126de3b181",
+      "name": "Mensaje desde imagen",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "i1",
+              "name": "telefono",
+              "type": "string",
+              "value": "={{ $json.telefono }}"
+            },
+            {
+              "id": "i2",
+              "name": "message_id",
+              "type": "string",
+              "value": "={{ $json.message_id }}"
+            },
+            {
+              "id": "i3",
+              "name": "mensaje",
+              "type": "string",
+              "value": "[el usuario mandó una foto directo por WhatsApp, sin pasar por la mini-app de captura verificada]"
+            },
+            {
+              "id": "i4",
+              "name": "es_imagen_directa",
+              "type": "boolean",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 3.4,
+      "position": [
+        3968,
+        10096
+      ],
+      "id": "53989a68-ce80-4b11-b3a6-658a06f2aca6",
+      "name": "Mensaje de texto",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t1",
+              "name": "telefono",
+              "type": "string",
+              "value": "={{ $json.telefono }}"
+            },
+            {
+              "id": "t2",
+              "name": "message_id",
+              "type": "string",
+              "value": "={{ $json.message_id }}"
+            },
+            {
+              "id": "t3",
+              "name": "mensaje",
+              "type": "string",
+              "value": "={{ $json.body_text }}"
+            },
+            {
+              "id": "t4",
+              "name": "es_imagen_directa",
+              "type": "boolean",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        4192,
+        9904
+      ],
+      "id": "066cf83d-0ac5-4f2e-99f9-f17cb4a8a130",
+      "name": "Guardar en buffer",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $json.telefono }}",
+        "messageData": "={{ JSON.stringify({ mensaje: $json.mensaje, sessionid: $json.message_id, date_time: $now.toISO() }) }}",
+        "tail": true
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1.1,
+      "position": [
+        4416,
+        9904
+      ],
+      "id": "dc9ca747-4c95-4880-9266-846ae36c82f4",
+      "name": "Esperar mensajes seguidos",
+      "type": "n8n-nodes-base.wait",
+      "parameters": {
+        "amount": 8
+      },
+      "webhookId": "0f96d781-51b7-4bed-be12-7a6e7a2565d7"
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        4640,
+        9904
+      ],
+      "id": "a15cf573-d36b-4586-a897-2ce94787fea3",
+      "name": "Leer buffer",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "get",
+        "propertyName": "mensajes",
+        "key": "={{ $('Guardar en buffer').item.json.telefono || $json.telefono }}",
+        "options": {}
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 3,
+      "position": [
+        4864,
+        9904
+      ],
+      "id": "9e1a67d9-7587-433e-a581-93e1bfb60fa3",
+      "name": "Soy el ultimo mensaje?",
+      "type": "n8n-nodes-base.switch",
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ JSON.parse($json.mensajes.last()).sessionid }}",
+                    "rightValue": "={{ $('Guardar en buffer').item.json.message_id }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    },
+                    "id": "f1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ignorar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "continuar"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        5088,
+        9808
+      ],
+      "id": "bd7fb2e1-0ac5-4fe3-8b05-3058733ca75f",
+      "name": "Ignorar (llego un mensaje mas nuevo)",
+      "type": "n8n-nodes-base.noOp",
+      "parameters": {}
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        5088,
+        10000
+      ],
+      "id": "9a48d1c9-74c0-439d-9efb-d90378f0b11f",
+      "name": "Vaciar buffer",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('Guardar en buffer').item.json.telefono }}"
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        5312,
+        10000
+      ],
+      "id": "979d6177-8518-42a1-b065-12d693849c17",
+      "name": "Concatenar mensajes",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const items = $('Leer buffer').first().json.mensajes.map(m => JSON.parse(m));\nconst mensaje_texto = items.map(i => i.mensaje).join('\\n');\nreturn [{ json: { telefono: $('Datos').first().json.telefono, mensaje_texto } }];"
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        5760,
+        10000
+      ],
+      "id": "e9280079-e166-4c37-aea7-be1424c7ff12",
+      "name": "Buscar usuario",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "usuarios",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "telefono",
+              "condition": "eq",
+              "keyValue": "={{ $('Concatenar mensajes').item.json.telefono }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        5984,
+        10000
+      ],
+      "id": "136114f4-e259-4eb7-808e-eed2d2c45a90",
+      "name": "Usuario existe?",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notExists",
+                "singleValue": true
+              },
+              "id": "u1"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        6432,
+        9904
+      ],
+      "id": "09960eed-c8e9-4316-9113-06c947d54a11",
+      "name": "Usuario encontrado",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "return [{ json: { usuario_id: $input.item.json.id } }];"
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        6208,
+        10096
+      ],
+      "id": "aef722e2-e35c-433d-8ec2-4899a292d2bf",
+      "name": "Crear usuario",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "tableId": "usuarios",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "telefono",
+              "fieldValue": "={{ $('Concatenar mensajes').item.json.telefono }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        6432,
+        10096
+      ],
+      "id": "ec827b18-20ce-4e73-8a05-c5e45baad2dc",
+      "name": "Usuario creado",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "return [{ json: { usuario_id: $input.item.json.id } }];"
+      }
+    },
+    {
+      "typeVersion": 3.4,
+      "position": [
+        6736,
+        9968
+      ],
+      "id": "f98a7272-686a-4c8a-a85f-9e7e78eb5518",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "u",
+              "name": "usuario_id",
+              "value": "={{ $json.usuario_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        6960,
+        9968
+      ],
+      "id": "a1000001-0001-4000-8000-000000000001",
+      "name": "Leer await",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "get",
+        "propertyName": "await_value",
+        "key": "=choqui:await:{{ $('Concatenar mensajes').item.json.telefono }}",
+        "options": {}
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7184,
+        9968
+      ],
+      "id": "a1000001-0001-4000-8000-000000000002",
+      "name": "Buscar pendientes",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "siniestros",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Edit Fields').item.json.usuario_id }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        7408,
+        9968
+      ],
+      "id": "a1000001-0001-4000-8000-000000000003",
+      "name": "Clasificar flujo",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const PENDIENTES = new Set([\n  'inicio','hay_heridos_check','pidiendo_patente','pidiendo_foto_patente_otro',\n  'pidiendo_foto_danio_propio','pidiendo_datos_otro_conductor','pidiendo_foto_carnet_seguro',\n  'pidiendo_ubicacion','generando_resumen','esperando_decision_pendiente'\n]);\n\nconst telefono = $('Concatenar mensajes').first().json.telefono;\nconst mensaje_texto = ($('Concatenar mensajes').first().json.mensaje_texto || '').trim();\nconst usuario_id = $('Edit Fields').first().json.usuario_id;\n\nconst awaitRaw = $('Leer await').first().json.propertyName\n  ?? $('Leer await').first().json.await_value\n  ?? $('Leer await').first().json.data\n  ?? $('Leer await').first().json[telefono]\n  ?? null;\n\n// Redis \"get\" node may put value in different shapes\nlet awaitVal = null;\nconst leer = $('Leer await').first().json;\nif (typeof leer === 'string') awaitVal = leer;\nelse if (leer && typeof leer.await_value === 'string') awaitVal = leer.await_value;\nelse if (leer && typeof leer.propertyName === 'string' && leer.propertyName.startsWith('{')) awaitVal = leer.propertyName;\nelse {\n  // n8n redis get often returns { [propertyName]: value } or the value under \"await_value\"\n  const keys = Object.keys(leer || {}).filter(k => !['telefono','usuario_id'].includes(k));\n  for (const k of keys) {\n    if (typeof leer[k] === 'string' && (leer[k].startsWith('{') || leer[k] === 'patente' || leer[k].startsWith('decision'))) {\n      awaitVal = leer[k];\n      break;\n    }\n  }\n  if (!awaitVal && typeof leer.await_value !== 'undefined') awaitVal = leer.await_value;\n}\n\nlet awaitObj = null;\nif (awaitVal && typeof awaitVal === 'string') {\n  try { awaitObj = JSON.parse(awaitVal); } catch { awaitObj = { type: awaitVal }; }\n}\n\nconst rows = $('Buscar pendientes').all().map(i => i.json).filter(r => r && r.id && PENDIENTES.has(r.estado));\nrows.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));\nconst pendiente = rows[0] || null;\n\nconst HOUR = 3600e3;\nconst DAY = 24 * HOUR;\nconst now = Date.now();\nconst ageMs = pendiente ? now - new Date(pendiente.updated_at).getTime() : null;\n\nfunction normalizePatente(s) {\n  return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');\n}\n\nfunction parseDecision(text) {\n  const t = text.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n  if (/\\b(continuar|continuarlo|seguir|retomar|el mismo|ese)\\b/.test(t)) return 'continuar';\n  if (/\\b(nuevo|nueva|otro|abrir|empezar|arrancar)\\b/.test(t)) return 'nuevo';\n  return 'ambigua';\n}\n\nconst base = { telefono, mensaje_texto, usuario_id };\n\n// 1) Awaiting decision reply\nif (awaitObj && awaitObj.type === 'decision') {\n  const decision = parseDecision(mensaje_texto);\n  if (decision === 'continuar') {\n    return [{ json: { ...base, accion: 'decision_continuar', siniestro_id: awaitObj.siniestro_id, estado_prev: awaitObj.estado_prev || 'inicio', hay_heridos: awaitObj.hay_heridos ?? null, datos_otro_conductor: awaitObj.datos_otro_conductor ?? null } }];\n  }\n  if (decision === 'nuevo') {\n    return [{ json: { ...base, accion: 'decision_nuevo', siniestro_id: awaitObj.siniestro_id } }];\n  }\n  return [{ json: { ...base, accion: 'decision_ambigua', siniestro_id: awaitObj.siniestro_id, fecha_label: awaitObj.fecha_label || '' } }];\n}\n\n// 2) Awaiting patente\nif (awaitObj && awaitObj.type === 'patente') {\n  const patente = normalizePatente(mensaje_texto);\n  if (!patente || patente.length < 5) {\n    return [{ json: { ...base, accion: 'pedir_patente_de_nuevo' } }];\n  }\n  return [{ json: { ...base, accion: 'validar_patente', patente } }];\n}\n\n// 3) Pending siniestro grace logic\nif (pendiente) {\n  if (pendiente.estado === 'esperando_decision_pendiente') {\n    const decision = parseDecision(mensaje_texto);\n    const fecha = new Date(pendiente.created_at);\n    const fecha_label = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });\n    if (decision === 'continuar') {\n      return [{ json: { ...base, accion: 'decision_continuar', siniestro_id: pendiente.id, estado_prev: 'inicio', hay_heridos: pendiente.hay_heridos, datos_otro_conductor: pendiente.datos_otro_conductor } }];\n    }\n    if (decision === 'nuevo') {\n      return [{ json: { ...base, accion: 'decision_nuevo', siniestro_id: pendiente.id } }];\n    }\n    return [{ json: { ...base, accion: 'decision_ambigua', siniestro_id: pendiente.id, fecha_label } }];\n  }\n\n  if (ageMs != null && ageMs < DAY) {\n    return [{ json: { ...base, accion: 'continuar', siniestro_id: pendiente.id, estado: pendiente.estado, hay_heridos: pendiente.hay_heridos, datos_otro_conductor: pendiente.datos_otro_conductor } }];\n  }\n\n  if (ageMs != null && ageMs <= 30 * DAY) {\n    const fecha = new Date(pendiente.created_at);\n    const fecha_label = fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });\n    return [{ json: {\n      ...base,\n      accion: 'preguntar_gracia',\n      siniestro_id: pendiente.id,\n      estado_prev: pendiente.estado,\n      hay_heridos: pendiente.hay_heridos,\n      datos_otro_conductor: pendiente.datos_otro_conductor,\n      fecha_label\n    } }];\n  }\n\n  // expired > 30 days\n  return [{ json: { ...base, accion: 'expirado', siniestro_id: pendiente.id } }];\n}\n\n// 4) No pending → ask patent\nreturn [{ json: { ...base, accion: 'pedir_patente' } }];\n"
+      }
+    },
+    {
+      "typeVersion": 3,
+      "position": [
+        7632,
+        9968
+      ],
+      "id": "a1000001-0001-4000-8000-000000000004",
+      "name": "Rama flujo",
+      "type": "n8n-nodes-base.switch",
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "continuar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-continuar"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "continuar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "preguntar_gracia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-preguntar_gracia"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "preguntar_gracia"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "decision_continuar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-decision_continuar"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "decision_continuar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "decision_nuevo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-decision_nuevo"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "decision_nuevo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "decision_ambigua",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-decision_ambigua"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "decision_ambigua"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "pedir_patente",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-pedir_patente"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pedir_patente"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "pedir_patente_de_nuevo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-pedir_patente_de_nuevo"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pedir_patente_de_nuevo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "validar_patente",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-validar_patente"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "validar_patente"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "expirado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "r-expirado"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "expirado"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        9400
+      ],
+      "id": "a1000001-0001-4000-8000-000000000010",
+      "name": "Touch updated_at",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "update",
+        "tableId": "siniestros",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.siniestro_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        8144,
+        9400
+      ],
+      "id": "a1000001-0001-4000-8000-000000000011",
+      "name": "Pack continuar",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const c = $('Clasificar flujo').first().json;\nreturn [{ json: { siniestro_id: c.siniestro_id, estado: c.estado, hay_heridos: c.hay_heridos, datos_otro_conductor: c.datos_otro_conductor } }];"
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        9600
+      ],
+      "id": "a1000001-0001-4000-8000-000000000020",
+      "name": "Set esperando decision",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "update",
+        "tableId": "siniestros",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.siniestro_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado",
+              "fieldValue": "esperando_decision_pendiente"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8144,
+        9600
+      ],
+      "id": "a1000001-0001-4000-8000-000000000021",
+      "name": "Guardar await decision",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "set",
+        "key": "=choqui:await:{{ $('Clasificar flujo').item.json.telefono }}",
+        "value": "={{ JSON.stringify({ type: 'decision', siniestro_id: $('Clasificar flujo').item.json.siniestro_id, estado_prev: $('Clasificar flujo').item.json.estado_prev, hay_heridos: $('Clasificar flujo').item.json.hay_heridos, datos_otro_conductor: $('Clasificar flujo').item.json.datos_otro_conductor, fecha_label: $('Clasificar flujo').item.json.fecha_label }) }}",
+        "expire": true,
+        "ttl": 2592000
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8368,
+        9600
+      ],
+      "id": "a1000001-0001-4000-8000-000000000022",
+      "name": "Twilio preguntar gracia",
+      "type": "n8n-nodes-base.twilio",
+      "parameters": {
+        "from": "+15636665928",
+        "to": "={{ $('Clasificar flujo').item.json.telefono }}",
+        "toWhatsapp": true,
+        "message": "=Tenés un reclamo del {{ $('Clasificar flujo').item.json.fecha_label }} sin terminar. ¿Continuamos ese o abrimos uno nuevo? Respondé *continuar* o *nuevo*.",
+        "options": {}
+      },
+      "credentials": {
+        "twilioApi": {
+          "id": "pQaBclpf0JbwL5wY",
+          "name": "WPP MARGAL"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        9800
+      ],
+      "id": "a1000001-0001-4000-8000-000000000030",
+      "name": "Restaurar estado previo",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "update",
+        "tableId": "siniestros",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.siniestro_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado",
+              "fieldValue": "={{ $json.estado_prev }}"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8144,
+        9800
+      ],
+      "id": "a1000001-0001-4000-8000-000000000031",
+      "name": "Clear await (continuar)",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "delete",
+        "key": "=choqui:await:{{ $('Clasificar flujo').item.json.telefono }}"
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        8368,
+        9800
+      ],
+      "id": "a1000001-0001-4000-8000-000000000032",
+      "name": "Pack decision continuar",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const c = $('Clasificar flujo').first().json;\nreturn [{ json: { siniestro_id: c.siniestro_id, estado: c.estado_prev, hay_heridos: c.hay_heridos, datos_otro_conductor: c.datos_otro_conductor } }];"
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        10000
+      ],
+      "id": "a1000001-0001-4000-8000-000000000040",
+      "name": "Abandonar pendiente",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "update",
+        "tableId": "siniestros",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.siniestro_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado",
+              "fieldValue": "abandonado"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8144,
+        10000
+      ],
+      "id": "a1000001-0001-4000-8000-000000000041",
+      "name": "Clear await (nuevo)",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "delete",
+        "key": "=choqui:await:{{ $('Clasificar flujo').item.json.telefono }}"
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        8368,
+        10000
+      ],
+      "id": "a1000001-0001-4000-8000-000000000042",
+      "name": "Hacia pedir patente",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const c = $('Clasificar flujo').first().json;\nreturn [{ json: { ...c, accion: 'pedir_patente' } }];"
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        10200
+      ],
+      "id": "a1000001-0001-4000-8000-000000000050",
+      "name": "Twilio decision ambigua",
+      "type": "n8n-nodes-base.twilio",
+      "parameters": {
+        "from": "+15636665928",
+        "to": "={{ $json.telefono }}",
+        "toWhatsapp": true,
+        "message": "No te entendí del todo. Respondé solo *continuar* (seguimos el reclamo pendiente) o *nuevo* (abrimos uno distinto).",
+        "options": {}
+      },
+      "credentials": {
+        "twilioApi": {
+          "id": "pQaBclpf0JbwL5wY",
+          "name": "WPP MARGAL"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        10400
+      ],
+      "id": "a1000001-0001-4000-8000-000000000060",
+      "name": "Guardar await patente",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "set",
+        "key": "=choqui:await:{{ $json.telefono }}",
+        "value": "={{ JSON.stringify({ type: 'patente' }) }}",
+        "expire": true,
+        "ttl": 86400
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8144,
+        10400
+      ],
+      "id": "a1000001-0001-4000-8000-000000000061",
+      "name": "Twilio pedir patente",
+      "type": "n8n-nodes-base.twilio",
+      "parameters": {
+        "from": "+15636665928",
+        "to": "={{ $('Clasificar flujo').item.json.telefono }}",
+        "toWhatsapp": true,
+        "message": "Para abrir el reclamo necesito la patente del auto asegurado (la tuya). Escribila sin espacios, por ejemplo ABC123 o AB123CD.",
+        "options": {}
+      },
+      "credentials": {
+        "twilioApi": {
+          "id": "pQaBclpf0JbwL5wY",
+          "name": "WPP MARGAL"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        10600
+      ],
+      "id": "a1000001-0001-4000-8000-000000000062",
+      "name": "Twilio patente invalida",
+      "type": "n8n-nodes-base.twilio",
+      "parameters": {
+        "from": "+15636665928",
+        "to": "={{ $json.telefono }}",
+        "toWhatsapp": true,
+        "message": "No pude leer esa patente. Mandala de nuevo sin espacios ni guiones (ej: ABC123).",
+        "options": {}
+      },
+      "credentials": {
+        "twilioApi": {
+          "id": "pQaBclpf0JbwL5wY",
+          "name": "WPP MARGAL"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        7920,
+        10800
+      ],
+      "id": "a1000001-0001-4000-8000-000000000070",
+      "name": "Buscar poliza activa",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "polizas",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "patente",
+              "condition": "eq",
+              "keyValue": "={{ $json.patente }}"
+            },
+            {
+              "keyName": "activa",
+              "condition": "eq",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        8144,
+        10800
+      ],
+      "id": "a1000001-0001-4000-8000-000000000071",
+      "name": "Poliza existe?",
+      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "id": "p1"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8368,
+        10960
+      ],
+      "id": "a1000001-0001-4000-8000-000000000072",
+      "name": "Twilio sin poliza",
+      "type": "n8n-nodes-base.twilio",
+      "parameters": {
+        "from": "+15636665928",
+        "to": "={{ $('Clasificar flujo').item.json.telefono }}",
+        "toWhatsapp": true,
+        "message": "No encontré una póliza activa para esa patente. Revisá que esté bien escrita o contactá a tu corredor. Cuando tengas la patente correcta, mandámela de nuevo.",
+        "options": {}
+      },
+      "credentials": {
+        "twilioApi": {
+          "id": "pQaBclpf0JbwL5wY",
+          "name": "WPP MARGAL"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8368,
+        10640
+      ],
+      "id": "a1000001-0001-4000-8000-000000000073",
+      "name": "Linkear poliza usuario",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "update",
+        "tableId": "polizas",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "usuario_id",
+              "fieldValue": "={{ $('Clasificar flujo').item.json.usuario_id }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8592,
+        10640
+      ],
+      "id": "a1000001-0001-4000-8000-000000000074",
+      "name": "Clear await (patente ok)",
+      "type": "n8n-nodes-base.redis",
+      "parameters": {
+        "operation": "delete",
+        "key": "=choqui:await:{{ $('Clasificar flujo').item.json.telefono }}"
+      },
+      "credentials": {
+        "redis": {
+          "id": "aH5LGc6z5ye1CVdj",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        8816,
+        10640
+      ],
+      "id": "a1000001-0001-4000-8000-000000000075",
+      "name": "Crear siniestro",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "tableId": "siniestros",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "usuario_id",
+              "fieldValue": "={{ $('Clasificar flujo').item.json.usuario_id }}"
+            },
+            {
+              "fieldId": "estado",
+              "fieldValue": "inicio"
+            },
+            {
+              "fieldId": "patente_asegurado",
+              "fieldValue": "={{ $('Clasificar flujo').item.json.patente }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        9040,
+        10640
+      ],
+      "id": "a1000001-0001-4000-8000-000000000076",
+      "name": "Siniestro creado",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const s = $input.item.json;\nreturn [{ json: { siniestro_id: s.id, estado: s.estado, hay_heridos: s.hay_heridos, datos_otro_conductor: s.datos_otro_conductor } }];"
+      }
+    },
+    {
+      "typeVersion": 3.4,
+      "position": [
+        9264,
+        9968
+      ],
+      "id": "d098b492-c846-47ed-8dd4-2c4cde5fb5c1",
+      "name": "Merge siniestro",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "siniestro_id",
+              "value": "={{ $json.siniestro_id }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "estado",
+              "value": "={{ $json.estado }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "hay_heridos",
+              "value": "={{ $json.hay_heridos }}",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "datos_otro_conductor",
+              "value": "={{ $json.datos_otro_conductor }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        9488,
+        9968
+      ],
+      "id": "629d3419-a06a-4bed-8f86-0d14345a90a5",
+      "name": "Buscar fotos ya subidas",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "fotos",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "siniestro_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.siniestro_id }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "typeVersion": 2,
+      "position": [
+        9712,
+        9968
+      ],
+      "id": "d7ccb30c-3a1d-4abe-ac06-7e5c75e4e33e",
+      "name": "Resumir contexto",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const fotos = $input.all().map(i => i.json).filter(x => x && x.tipo);\nconst tipos = ['patente_otro', 'danio_propio', 'carnet', 'seguro_otro'];\nconst resumen = tipos.map(t => {\n  const f = fotos.find(x => x.tipo === t);\n  if (!f) return `${t}: no subida`;\n  return `${t}: ${f.validada ? 'subida y validada' : 'subida, pendiente de validar'}`;\n}).join(' | ');\n\nconst s = $('Merge siniestro').first().json;\nconst vercel = $env.VERCEL_APP_URL || 'https://choqui.vercel.app';\n\nreturn [{\n  json: {\n    telefono: $('Concatenar mensajes').first().json.telefono,\n    mensaje_texto: $('Concatenar mensajes').first().json.mensaje_texto,\n    siniestro_id: s.siniestro_id,\n    estado: s.estado,\n    hay_heridos: s.hay_heridos,\n    datos_otro_conductor: s.datos_otro_conductor,\n    fotos_resumen: resumen,\n    vercel_app_url: vercel,\n  }\n}];\n"
+      }
+    },
+    {
+      "typeVersion": 1.7,
+      "position": [
+        9936,
+        9968
+      ],
+      "id": "051771c8-f283-42b0-b4b6-cd494be91ae1",
+      "name": "Agente Choqui",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Estado actual del siniestro: ' + $json.estado + '\\nHay heridos registrado: ' + $json.hay_heridos + '\\nFotos: ' + $json.fotos_resumen + '\\nLink base de la mini-app de captura: ' + $json.vercel_app_url + '/captura/' + $json.siniestro_id + '/[tipo]' + '\\n\\nMensaje del usuario: ' + $json.mensaje_texto }}",
+        "options": {
+          "systemMessage": "# Quién sos\n\nSos Choqui, el asistente de WhatsApp que ayuda a alguien justo después de un choque de auto, en nombre de su aseguradora. Hablás en español rioplatense, tono cálido, tranquilizador y directo. Mensajes cortos (2-4 líneas), una sola pregunta o pedido por mensaje.\n\n# Qué YA se resolvió fuera de este agente (no lo repitas)\n\n- La patente del asegurado ya fue validada contra una póliza activa, o el usuario está retomando un siniestro existente.\n- Si había un reclamo pendiente, la decisión de continuar vs. abrir uno nuevo ya se tomó antes de llegar acá.\n- No pidas la patente del auto del asegurado. No crees siniestros. No preguntes si quiere continuar un caso viejo.\n\n# El flujo que tenés que seguir (en este orden, sin saltear pasos)\n\n1. **Heridos primero, siempre.** Si el campo 'Hay heridos registrado' está vacío/null, tu primera prioridad es preguntar si hay heridos. Si el usuario dice que sí, tu ÚNICA respuesta es indicarle que llame inmediatamente al 911 o a emergencias, y usar la tool para marcar hay_heridos=true y estado='requiere_info'. No sigas con el checklist de fotos en ese caso.\n\n2. **Si no hay heridos**, guiá el checklist de fotos EN ESTE ORDEN, pidiendo una por vez, usando el link de la mini-app (nunca le pidas que mande la foto directo por este chat, porque WhatsApp le borra los metadatos que necesitamos para verificar):\n   - patente_otro (patente del otro vehículo)\n   - danio_propio (daño en su propio auto)\n   - carnet (carnet de conducir)\n   - seguro_otro (seguro del otro conductor, si lo tiene a mano)\n\n   Mirá el campo 'Fotos' del contexto para saber cuáles ya están subidas y cuáles faltan. No pidas de nuevo una que ya figure como subida.\n\n3. **Datos del otro conductor**: en algún momento del checklist (podés intercalarlo con las fotos si el usuario ya te los está dando) pedile nombre, y si la tiene, aseguradora del otro conductor. Guardalo con la tool cuando lo tengas.\n\n4. **Cuando las 4 fotos estén subidas y validadas, y tengas los datos del otro conductor**, avisale que ya tenés todo, agradecele, y marcá el estado como 'generando_resumen' con la tool.\n\n# Tus tools\n\nTenés una tool para actualizar el siniestro en la base de datos (cambiar estado, marcar hay_heridos, o guardar datos_otro_conductor). Usala cada vez que el flujo avance a un paso nuevo — no confíes solo en tu propia memoria de la charla, el estado real vive en la base de datos.\n\n# Límites\n\n- Nunca inventes que una foto fue recibida si no figura como subida en el contexto.\n- Si el usuario te manda una foto directo por este chat (vas a ver una nota indicándolo en el mensaje), recordale amablemente que tiene que usar el link de la mini-app para que la foto quede verificada.\n- Si el usuario pregunta algo fuera de este flujo (ej: cuánto tarda el reclamo, qué cubre su póliza), respondé con honestidad que no tenés esa info ahora pero que un operador la va a revisar, y seguí con el checklist.\n- No uses la tool para inventar cambios de estado que el flujo no pide — seguí el orden."
+        }
+      }
+    },
+    {
+      "typeVersion": 1.2,
+      "position": [
+        9952,
+        10192
+      ],
+      "id": "79f1bf98-4ea7-42aa-9e33-8dbd0719455e",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "cR3FsfLU8pTufVkv",
+          "name": "OpenAi Zypheri"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        10176,
+        10192
+      ],
+      "id": "9187b74f-b796-475e-9b1d-5105be4cfecc",
+      "name": "Update a row in Supabase",
+      "type": "n8n-nodes-base.supabaseTool",
+      "parameters": {
+        "operation": "update",
+        "tableId": "siniestros",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('Resumir contexto').item.json.siniestro_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado",
+              "fieldValue": "="
+            },
+            {
+              "fieldId": "hay_heridos",
+              "fieldValue": "="
+            },
+            {
+              "fieldId": "datos_otro_conductor",
+              "fieldValue": "="
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "amVsCXcwGnSZOeob",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "typeVersion": 1,
+      "position": [
+        10288,
+        9968
+      ],
+      "id": "e9fe5acb-0119-45a5-8b09-1b8e8f27741f",
+      "name": "Send an SMS/MMS/WhatsApp message",
+      "type": "n8n-nodes-base.twilio",
+      "parameters": {
+        "from": "+15636665928",
+        "to": "={{ $node[\"Resumir contexto\"].json.telefono }}",
+        "toWhatsapp": true,
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "credentials": {
+        "twilioApi": {
+          "id": "pQaBclpf0JbwL5wY",
+          "name": "WPP MARGAL"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos": {
+      "main": [
+        [
+          {
+            "node": "Tipo mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo mensaje": {
+      "main": [
+        [
+          {
+            "node": "Descargar audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mensaje desde imagen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mensaje de texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribir audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir audio": {
+      "main": [
+        [
+          {
+            "node": "Mensaje desde audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje desde audio": {
+      "main": [
+        [
+          {
+            "node": "Guardar en buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje desde imagen": {
+      "main": [
+        [
+          {
+            "node": "Guardar en buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje de texto": {
+      "main": [
+        [
+          {
+            "node": "Guardar en buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en buffer": {
+      "main": [
+        [
+          {
+            "node": "Esperar mensajes seguidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar mensajes seguidos": {
+      "main": [
+        [
+          {
+            "node": "Leer buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer buffer": {
+      "main": [
+        [
+          {
+            "node": "Soy el ultimo mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Soy el ultimo mensaje?": {
+      "main": [
+        [
+          {
+            "node": "Ignorar (llego un mensaje mas nuevo)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Vaciar buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vaciar buffer": {
+      "main": [
+        [
+          {
+            "node": "Concatenar mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concatenar mensajes": {
+      "main": [
+        [
+          {
+            "node": "Buscar usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar usuario": {
+      "main": [
+        [
+          {
+            "node": "Usuario existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario existe?": {
+      "main": [
+        [
+          {
+            "node": "Usuario encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario encontrado": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear usuario": {
+      "main": [
+        [
+          {
+            "node": "Usuario creado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario creado": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Leer await",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer await": {
+      "main": [
+        [
+          {
+            "node": "Buscar pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar pendientes": {
+      "main": [
+        [
+          {
+            "node": "Clasificar flujo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar flujo": {
+      "main": [
+        [
+          {
+            "node": "Rama flujo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rama flujo": {
+      "main": [
+        [
+          {
+            "node": "Touch updated_at",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set esperando decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Restaurar estado previo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Abandonar pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Twilio decision ambigua",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guardar await patente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Twilio patente invalida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar poliza activa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Abandonar pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Touch updated_at": {
+      "main": [
+        [
+          {
+            "node": "Pack continuar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pack continuar": {
+      "main": [
+        [
+          {
+            "node": "Merge siniestro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set esperando decision": {
+      "main": [
+        [
+          {
+            "node": "Guardar await decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar await decision": {
+      "main": [
+        [
+          {
+            "node": "Twilio preguntar gracia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restaurar estado previo": {
+      "main": [
+        [
+          {
+            "node": "Clear await (continuar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear await (continuar)": {
+      "main": [
+        [
+          {
+            "node": "Pack decision continuar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pack decision continuar": {
+      "main": [
+        [
+          {
+            "node": "Merge siniestro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abandonar pendiente": {
+      "main": [
+        [
+          {
+            "node": "Clear await (nuevo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear await (nuevo)": {
+      "main": [
+        [
+          {
+            "node": "Hacia pedir patente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hacia pedir patente": {
+      "main": [
+        [
+          {
+            "node": "Guardar await patente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar await patente": {
+      "main": [
+        [
+          {
+            "node": "Twilio pedir patente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar poliza activa": {
+      "main": [
+        [
+          {
+            "node": "Poliza existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poliza existe?": {
+      "main": [
+        [
+          {
+            "node": "Linkear poliza usuario",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Twilio sin poliza",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Linkear poliza usuario": {
+      "main": [
+        [
+          {
+            "node": "Clear await (patente ok)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear await (patente ok)": {
+      "main": [
+        [
+          {
+            "node": "Crear siniestro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear siniestro": {
+      "main": [
+        [
+          {
+            "node": "Siniestro creado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siniestro creado": {
+      "main": [
+        [
+          {
+            "node": "Merge siniestro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge siniestro": {
+      "main": [
+        [
+          {
+            "node": "Buscar fotos ya subidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar fotos ya subidas": {
+      "main": [
+        [
+          {
+            "node": "Resumir contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumir contexto": {
+      "main": [
+        [
+          {
+            "node": "Agente Choqui",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Choqui": {
+      "main": [
+        [
+          {
+            "node": "Send an SMS/MMS/WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Choqui",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row in Supabase": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Choqui",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8878b8b5c932dadc98af3b054e2b2d9c2e89ea4b81903d3501ca4fa6df3783b1"
+  }
+}

@@ -8,7 +8,7 @@ Cuando alguien choca, le escribe a Choqui por WhatsApp. El bot verifica si hay h
 
 La gestión de siniestros hoy es lenta y manual: la persona no sabe qué hacer justo después de un choque, y la aseguradora depende de call centers para recolectar información básica. Choqui automatiza esa recolección desde el primer mensaje, y le da al operador un caso ya estructurado y con una primera evaluación de riesgo, en vez de partir de cero.
 
-> **Nota:** este proyecto es una demo de hackathon para un solo cliente ("aseguradora demo"), no un SaaS multi-tenant productivo. El modelo de datos soporta múltiples organizaciones a futuro (tabla `organizaciones`), pero no se implementó onboarding, billing, ni gestión de múltiples clientes en esta versión.
+> **Nota:** demo de hackathon para un solo cliente ("Aseguradora Demo"). No hay tabla de organizaciones ni multi-tenant: cualquier operador autenticado ve todo el dataset.
 
 ## Arquitectura
 
@@ -28,8 +28,8 @@ WhatsApp (usuario)
                     Dashboard de gestión + mini-app de captura
 ```
 
-- **n8n** contiene toda la lógica del bot y del análisis de fraude, como workflows visuales (no vive en este repo — ver `/n8n-workflows` para los exports de referencia).
-  - *Workflow del bot*: recibe mensajes de WhatsApp, detecta si son texto/audio/imagen, agrupa mensajes seguidos con un buffer en Redis, y usa un agente de IA (con acceso acotado a herramientas) para guiar la conversación y avanzar el estado del siniestro en Supabase.
+- **n8n** contiene toda la lógica del bot y del análisis de fraude, como workflows visuales (exports de referencia en [`/n8n-workflows`](n8n-workflows)).
+  - *Workflow del bot* ([`whatsapp-inbound.json`](n8n-workflows/whatsapp-inbound.json)): recibe mensajes de WhatsApp, buffer Redis, valida patente contra `polizas` activas antes de crear el siniestro, ofrece continuar vs. nuevo si hay un pendiente incompleto (gracia 30 días), y usa un agente de IA para guiar el checklist.
   - *Workflow de fraude*: se dispara cuando un siniestro completa su checklist. Calcula un score con reglas explícitas (fotos no verificadas, inconsistencias de ubicación, patentes repetidas, fotos duplicadas) y lo complementa con una revisión de un agente de IA, acotada a un ajuste de ±15 puntos sobre el score base.
 - **Next.js (este repo)**: el panel de gestión para operadores y la mini-app de captura de fotos (cámara forzada + ubicación verificada, para resolver el problema de la metadata que WhatsApp elimina).
 - **Supabase**: base de datos, storage de fotos, autenticación de operadores y actualizaciones en tiempo real del dashboard.
@@ -60,11 +60,11 @@ cp .env.example .env.local
 npm run dev
 ```
 
-El bot de WhatsApp y el análisis de fraude no corren en local — son workflows de n8n que se configuran directamente en su interfaz, apuntando a la misma base de Supabase (ver `/n8n-workflows` para los JSON exportados como referencia).
+El bot de WhatsApp y el análisis de fraude no corren en local — son workflows de n8n. El inbound actualizado (patente + gracia) está en [`n8n-workflows/whatsapp-inbound.json`](n8n-workflows/whatsapp-inbound.json); ver [`n8n-workflows/README.md`](n8n-workflows/README.md) para importarlo.
 
 ## Base de datos
 
-El esquema completo está en `/supabase/schema.sql`. Incluye las tablas `organizaciones`, `operadores`, `usuarios`, `siniestros`, `fotos` y `mensajes`, con Row Level Security, índices, y las tablas habilitadas para Realtime.
+El esquema completo está en `/supabase/schema.sql`. Incluye las tablas `operadores`, `usuarios`, `polizas`, `siniestros`, `fotos` y `mensajes`, con Row Level Security, índices, y Realtime en `siniestros` y `fotos`.
 
 ## Seguridad
 

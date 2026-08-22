@@ -19,7 +19,6 @@ export interface Siniestro {
   hay_heridos: boolean | null;
   fraud_score: number | null;
   fraud_signals: FraudSignal[] | string[] | null;
-  organizacion_id?: string | null;
   resumen?: string | null;
   [key: string]: unknown;
 }
