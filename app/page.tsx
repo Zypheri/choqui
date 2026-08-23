@@ -7,11 +7,11 @@ export default function HomePage() {
       <div className="text-center">
         <div className="mb-4 flex justify-center">
           <Image
-            src="/choqui-logo.png"
+            src="/choqui-logo-home.png"
             alt="Choqui"
-            width={160}
-            height={64}
-            className="h-14 w-auto"
+            width={200}
+            height={80}
+            className="h-16 w-auto"
             priority
           />
         </div>
