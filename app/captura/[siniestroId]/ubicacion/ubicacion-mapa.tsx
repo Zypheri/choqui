@@ -129,6 +129,21 @@ export function UbicacionMapa({ siniestroId }: UbicacionMapaProps) {
         .eq("id", siniestroId);
 
       if (error) throw new Error(error.message);
+
+      try {
+        await fetch("/api/trigger-paso", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siniestro_id: siniestroId,
+            paso: "ubicacion",
+          }),
+        });
+      } catch (error) {
+        // No bloquear la confirmación: la ubicación ya se guardó.
+        console.error("No se pudo notificar el paso completado:", error);
+      }
+
       setStatus("success");
     } catch (err) {
       setStatus("error");

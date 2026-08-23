@@ -117,6 +117,20 @@ export function CapturaFotoForm({
         }
       }
 
+      try {
+        await fetch("/api/trigger-paso", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            siniestro_id: siniestroId,
+            paso: tipo,
+          }),
+        });
+      } catch (error) {
+        // No bloquear la confirmación: la foto ya se guardó.
+        console.error("No se pudo notificar el paso completado:", error);
+      }
+
       const { data: fotos } = await supabase
         .from("fotos")
         .select("tipo")
