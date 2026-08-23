@@ -10,7 +10,7 @@ export default function HomePage() {
         </p>
         <Link
           href="/dashboard"
-          className="rounded-lg bg-accent px-6 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-accent-hover"
+          className="rounded-xl bg-accent px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
         >
           Ir al dashboard
         </Link>

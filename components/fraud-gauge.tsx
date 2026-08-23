@@ -16,11 +16,13 @@ const SIZE_MAP = {
 } as const;
 
 const COLOR_MAP = {
-  bajo: "#22C55E",
-  medio: "#F5A524",
-  alto: "#EF4444",
-  pending: "#9199A8",
+  bajo: "#16A34A",
+  medio: "#F59E0B",
+  alto: "#DC2626",
+  pending: "#6B7280",
 } as const;
+
+const TRACK_COLOR = "#E2E8F0";
 
 export function FraudGauge({ score, size = "sm" }: FraudGaugeProps) {
   const { box, stroke, font, label } = SIZE_MAP[size];
@@ -49,7 +51,7 @@ export function FraudGauge({ score, size = "sm" }: FraudGaugeProps) {
             cy={box / 2}
             r={radius}
             fill="none"
-            stroke="#22252C"
+            stroke={TRACK_COLOR}
             strokeWidth={stroke}
           />
           <circle

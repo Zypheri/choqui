@@ -7,6 +7,8 @@ import {
   formatFecha,
   getEstadoBadgeClasses,
   getEstadoLabel,
+  getPatenteOtro,
+  getShortId,
   summarizeFraudSignals,
 } from "@/lib/siniestros";
 import type { Siniestro } from "@/types/siniestro";
@@ -33,6 +35,7 @@ export default async function SiniestroDetailPage({
 
   const siniestro = data as Siniestro;
   const signalsSummary = summarizeFraudSignals(siniestro.fraud_signals, 4);
+  const patenteOtro = getPatenteOtro(siniestro);
 
   return (
     <div className="space-y-6">
@@ -47,12 +50,12 @@ export default async function SiniestroDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">
-              Siniestro
+              Siniestro {getShortId(id)}
             </h1>
             <p className="mt-1 font-mono text-sm text-text-muted">{id}</p>
           </div>
           <span
-            className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-medium ${getEstadoBadgeClasses(
+            className={`inline-flex rounded-xl border px-2.5 py-1 text-xs font-medium ${getEstadoBadgeClasses(
               siniestro.estado
             )}`}
           >
@@ -61,17 +64,17 @@ export default async function SiniestroDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-border bg-bg-surface p-5">
-          <p className="text-xs uppercase tracking-wide text-text-muted">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-border bg-bg-surface p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
             Fecha
           </p>
           <p className="mt-2 tabular-nums text-text-primary">
             {formatFecha(siniestro.created_at)}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-bg-surface p-5">
-          <p className="text-xs uppercase tracking-wide text-text-muted">
+        <div className="rounded-xl border border-border bg-bg-surface p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
             Heridos
           </p>
           <p className="mt-2">
@@ -85,24 +88,34 @@ export default async function SiniestroDetailPage({
             )}
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-bg-surface p-5">
-          <p className="text-xs uppercase tracking-wide text-text-muted">
-            Estado
+        <div className="rounded-xl border border-border bg-bg-surface p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+            Patente asegurado
           </p>
-          <p className="mt-2 text-text-primary">
-            {getEstadoLabel(siniestro.estado)}
+          <p className="mt-2 font-medium uppercase text-text-primary">
+            {siniestro.patente_asegurado ?? "—"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-bg-surface p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+            Patente tercero
+          </p>
+          <p className="mt-2 font-medium uppercase text-text-primary">
+            {patenteOtro ?? "—"}
           </p>
         </div>
       </div>
 
-      <section className="rounded-lg border border-border bg-bg-surface p-6">
+      <section className="rounded-xl border border-border bg-bg-surface p-6 shadow-sm">
         <h2 className="mb-6 text-lg font-semibold text-text-primary">
           Análisis de fraude
         </h2>
         <div className="flex flex-col items-start gap-8 sm:flex-row sm:items-center">
           <FraudGauge score={siniestro.fraud_score} size="lg" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm text-text-muted">Señales detectadas</p>
+            <p className="text-sm font-medium text-text-muted">
+              Señales detectadas
+            </p>
             <p className="mt-2 text-sm leading-relaxed text-text-primary">
               {signalsSummary}
             </p>
@@ -115,7 +128,7 @@ export default async function SiniestroDetailPage({
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-bg-surface p-6">
+      <section className="rounded-xl border border-border bg-bg-surface p-6 shadow-sm">
         <h2 className="mb-2 text-lg font-semibold text-text-primary">
           Detalle del parte
         </h2>

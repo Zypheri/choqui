@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SiniestrosKpiCards } from "@/components/siniestros-kpi-cards";
 import { SiniestrosTable } from "@/components/siniestros-table";
+import { filterSiniestrosBySearch } from "@/lib/siniestros";
 import { createClient } from "@/lib/supabase/client";
 import type { Siniestro } from "@/types/siniestro";
 
@@ -22,36 +24,46 @@ export function SiniestrosListClient({
 }: SiniestrosListClientProps) {
   const [siniestros, setSiniestros] = useState<Siniestro[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const fetchSiniestros = useCallback(async () => {
-    const supabase = createClient();
-    let query = supabase.from("siniestros").select("*");
+  const fetchSiniestros = useCallback(
+    async (options?: { silent?: boolean; manual?: boolean }) => {
+      if (options?.manual) {
+        setIsRefreshing(true);
+      }
 
-    if (mode === "nuevos") {
-      query = query.eq("estado", "inicio").order("created_at", {
-        ascending: false,
-      });
-    } else if (mode === "fraude") {
-      query = query
-        .not("fraud_score", "is", null)
-        .order("fraud_score", { ascending: false });
-    } else {
-      query = query.order("created_at", { ascending: false });
-    }
+      const supabase = createClient();
+      let query = supabase.from("siniestros").select("*");
 
-    const { data, error: fetchError } = await query;
+      if (mode === "nuevos") {
+        query = query.eq("estado", "inicio").order("created_at", {
+          ascending: false,
+        });
+      } else if (mode === "fraude") {
+        query = query
+          .not("fraud_score", "is", null)
+          .order("fraud_score", { ascending: false });
+      } else {
+        query = query.order("created_at", { ascending: false });
+      }
 
-    if (fetchError) {
-      setError(fetchError.message);
-      setSiniestros([]);
-    } else {
-      setError(null);
-      setSiniestros((data as Siniestro[]) ?? []);
-    }
+      const { data, error: fetchError } = await query;
 
-    setIsLoading(false);
-  }, [mode]);
+      if (fetchError) {
+        setError(fetchError.message);
+        setSiniestros([]);
+      } else {
+        setError(null);
+        setSiniestros((data as Siniestro[]) ?? []);
+      }
+
+      setIsLoading(false);
+      setIsRefreshing(false);
+    },
+    [mode]
+  );
 
   useEffect(() => {
     fetchSiniestros();
@@ -63,7 +75,7 @@ export function SiniestrosListClient({
         "postgres_changes",
         { event: "*", schema: "public", table: "siniestros" },
         () => {
-          fetchSiniestros();
+          fetchSiniestros({ silent: true });
         }
       )
       .subscribe();
@@ -73,6 +85,18 @@ export function SiniestrosListClient({
     };
   }, [fetchSiniestros, mode]);
 
+  const filteredSiniestros = useMemo(
+    () => filterSiniestrosBySearch(siniestros, searchQuery),
+    [siniestros, searchQuery]
+  );
+
+  const displayEmptyMessage =
+    siniestros.length === 0
+      ? emptyMessage
+      : searchQuery.trim()
+        ? "No se encontraron resultados para tu búsqueda"
+        : emptyMessage;
+
   return (
     <div>
       <div className="mb-6">
@@ -80,20 +104,26 @@ export function SiniestrosListClient({
         <p className="mt-1 text-sm text-text-muted">{description}</p>
       </div>
 
+      {mode === "all" && <SiniestrosKpiCards />}
+
       {isLoading ? (
-        <div className="rounded-lg border border-border bg-bg-surface px-6 py-16 text-center">
+        <div className="rounded-xl border border-border bg-bg-surface px-6 py-16 text-center shadow-sm">
           <p className="text-sm text-text-muted">Cargando siniestros…</p>
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-critico/30 bg-critico/10 px-6 py-8 text-center">
+        <div className="rounded-xl border border-critico/20 bg-critico/5 px-6 py-8 text-center shadow-sm">
           <p className="text-sm text-critico">{error}</p>
         </div>
       ) : (
         <SiniestrosTable
-          siniestros={siniestros}
+          siniestros={filteredSiniestros}
           gaugeSize={mode === "fraude" ? "md" : "sm"}
           showSignals={mode === "fraude"}
-          emptyMessage={emptyMessage}
+          emptyMessage={displayEmptyMessage}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onRefresh={() => fetchSiniestros({ manual: true })}
+          isRefreshing={isRefreshing}
         />
       )}
     </div>

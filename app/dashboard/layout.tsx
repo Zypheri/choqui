@@ -20,8 +20,8 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen bg-bg-base">
       <DashboardSidebar userEmail={user.email ?? ""} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center border-b border-border bg-bg-surface px-6">
-          <p className="text-sm text-text-muted">Panel de gestión</p>
+        <header className="flex h-14 items-center border-b border-border bg-bg-surface px-6 shadow-sm">
+          <p className="text-sm font-medium text-text-muted">Panel de gestión</p>
         </header>
         <main className="flex-1 overflow-auto px-6 py-8">{children}</main>
       </div>

@@ -10,30 +10,36 @@ const config: Config = {
     extend: {
       colors: {
         bg: {
-          base: "#0B0D12",
-          surface: "#14161C",
-          "surface-hover": "#1A1D24",
+          base: "#EEF1F6",
+          surface: "#FFFFFF",
+        },
+        sidebar: {
+          bg: "#0E2C55",
+          active: "#1F3B73",
         },
         border: {
-          DEFAULT: "#22252C",
+          DEFAULT: "#E2E8F0",
         },
         text: {
-          primary: "#F4F5F7",
-          muted: "#9199A8",
+          primary: "#12172B",
+          muted: "#6B7280",
         },
         accent: {
-          DEFAULT: "#4C4FE0",
-          hover: "#3D40C9",
+          DEFAULT: "#2563EB",
+          hover: "#1D4ED8",
         },
         fraud: {
-          bajo: "#22C55E",
-          medio: "#F5A524",
-          alto: "#EF4444",
+          bajo: "#16A34A",
+          medio: "#F59E0B",
+          alto: "#DC2626",
         },
-        critico: "#EF4444",
+        critico: "#DC2626",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        card: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
       },
     },
   },
