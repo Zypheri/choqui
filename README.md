@@ -101,4 +101,4 @@ RLS is enabled on every table. Operator policies (`authenticated`) allow viewing
 
 ## Team
 
-Built for the Aleph Hackathon Rosario by Francisco Buthet, Nicolas Ricobelli and Juan
+Built for the Aleph Hackathon Rosario by Francisco Buthet, Nicolas Ricobelli and Juan sebastian cabrera
