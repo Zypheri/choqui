@@ -67,15 +67,16 @@ export function CapturaFotoStep({
 
       <label className="flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-white px-6 py-10 active:border-emerald-500 active:bg-emerald-50">
         <span className="text-lg font-semibold text-gray-800">
-          {status === "uploading" ? "Subiendo foto…" : "Tocá para sacar la foto"}
+          {status === "uploading"
+            ? "Subiendo foto…"
+            : "Tocá para elegir o sacar una foto"}
         </span>
         <span className="mt-2 text-center text-sm text-gray-500">
-          Se abre la cámara trasera. No uses fotos de la galería.
+          Podés usar la cámara o elegir una de la galería.
         </span>
         <input
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           disabled={status === "uploading"}
           onChange={onFileChange}

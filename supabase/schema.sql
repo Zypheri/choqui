@@ -212,6 +212,20 @@ CREATE POLICY "operadores ven polizas"
   FOR SELECT
   USING (EXISTS (SELECT 1 FROM public.operadores WHERE id = auth.uid()));
 
+CREATE POLICY "mini_app lee siniestros"
+  ON public.siniestros
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+CREATE POLICY "mini_app lee fotos"
+  ON public.fotos
+  FOR SELECT
+  TO anon, authenticated
+  USING (
+    EXISTS (SELECT 1 FROM public.siniestros WHERE id = fotos.siniestro_id)
+  );
+
 CREATE POLICY "mini_app inserta fotos"
   ON public.fotos
   FOR INSERT
