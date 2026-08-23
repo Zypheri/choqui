@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   FOTO_TIPOS_MINI_APP,
   TOTAL_FOTOS_CHECKLIST,
+  type FotoTipoMiniApp,
 } from "@/lib/captura-tipos";
 
 export async function siniestroExiste(siniestroId: string): Promise<boolean> {
@@ -20,9 +21,9 @@ export async function siniestroExiste(siniestroId: string): Promise<boolean> {
   return Boolean(data?.id);
 }
 
-export async function contarFotosCompletadas(
+export async function listarTiposFaltantes(
   siniestroId: string
-): Promise<number> {
+): Promise<FotoTipoMiniApp[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("fotos")
@@ -31,10 +32,17 @@ export async function contarFotosCompletadas(
     .in("tipo", [...FOTO_TIPOS_MINI_APP]);
 
   if (error) {
-    console.error("Error contando fotos:", error.message);
-    return 0;
+    console.error("Error listando fotos:", error.message);
+    return [...FOTO_TIPOS_MINI_APP];
   }
 
-  const tiposUnicos = new Set((data ?? []).map((row) => row.tipo));
-  return Math.min(tiposUnicos.size, TOTAL_FOTOS_CHECKLIST);
+  const tiposHechos = new Set((data ?? []).map((row) => row.tipo));
+  return FOTO_TIPOS_MINI_APP.filter((tipo) => !tiposHechos.has(tipo));
+}
+
+export async function contarFotosCompletadas(
+  siniestroId: string
+): Promise<number> {
+  const faltantes = await listarTiposFaltantes(siniestroId);
+  return TOTAL_FOTOS_CHECKLIST - faltantes.length;
 }
