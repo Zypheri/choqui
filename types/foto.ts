@@ -1,7 +1,9 @@
 export interface FotoInsert {
   siniestro_id: string;
   tipo: string;
-  url: string;
+  /** Path en bucket `siniestros-fotos`. */
+  storage_path: string;
+  hash: string;
   lat: number;
   lng: number;
   captured_at: string;

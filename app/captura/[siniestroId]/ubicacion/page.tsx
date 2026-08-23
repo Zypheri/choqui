@@ -1,24 +1,35 @@
-import { UbicacionMapa } from "./ubicacion-mapa";
+import dynamic from "next/dynamic";
+import { LinkInvalido } from "@/components/link-invalido";
+import { siniestroExiste } from "@/lib/siniestro-captura";
+
+const UbicacionMapa = dynamic(
+  () =>
+    import("./ubicacion-mapa").then((mod) => mod.UbicacionMapa),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="py-10 text-center text-lg text-gray-600">
+        Cargando mapa…
+      </p>
+    ),
+  }
+);
 
 interface UbicacionPageProps {
   params: { siniestroId: string };
 }
 
-export default function UbicacionPage({ params }: UbicacionPageProps) {
+export default async function UbicacionPage({ params }: UbicacionPageProps) {
   const { siniestroId } = params;
 
+  const existe = await siniestroExiste(siniestroId);
+  if (!existe) {
+    return <LinkInvalido />;
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-8">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 className="mb-2 text-xl font-semibold text-gray-900">
-          ¿Dónde ocurrió el accidente?
-        </h1>
-        <p className="mb-4 text-sm text-gray-500">
-          Marcá el punto exacto en el mapa. Podés arrastrar el pin o tocar el
-          mapa.
-        </p>
-        <UbicacionMapa siniestroId={siniestroId} />
-      </div>
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-8">
+      <UbicacionMapa siniestroId={siniestroId} />
     </main>
   );
 }

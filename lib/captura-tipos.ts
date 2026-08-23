@@ -1,4 +1,4 @@
-export const FOTO_TIPOS = [
+export const FOTO_TIPOS_MINI_APP = [
   "dni_asegurado",
   "cedula_verde_asegurado",
   "licencia_asegurado",
@@ -10,7 +10,69 @@ export const FOTO_TIPOS = [
   "vista_lateral_der",
   "vista_trasera",
   "danios",
-  // legacy
+] as const;
+
+export type FotoTipoMiniApp = (typeof FOTO_TIPOS_MINI_APP)[number];
+
+export const TOTAL_FOTOS_CHECKLIST = FOTO_TIPOS_MINI_APP.length;
+
+interface CapturaTipoConfig {
+  titulo: string;
+  instruccion: string;
+}
+
+const INSTRUCCION_DEFAULT = "Sacá una foto clara y nítida";
+
+export const CAPTURA_TIPO_CONFIG: Record<FotoTipoMiniApp, CapturaTipoConfig> = {
+  dni_asegurado: {
+    titulo: "Foto de tu DNI",
+    instruccion: "Sacá una foto clara del frente de tu DNI",
+  },
+  cedula_verde_asegurado: {
+    titulo: "Cédula verde de tu auto",
+    instruccion: "Foto de la cédula verde (o azul) de tu vehículo",
+  },
+  licencia_asegurado: {
+    titulo: "Tu licencia de conducir",
+    instruccion: "Foto del frente de tu licencia",
+  },
+  dni_tercero: {
+    titulo: "DNI del otro conductor",
+    instruccion: "Si lo tenés a mano, sacale una foto",
+  },
+  cedula_verde_tercero: {
+    titulo: "Cédula verde del otro vehículo",
+    instruccion: INSTRUCCION_DEFAULT,
+  },
+  licencia_tercero: {
+    titulo: "Licencia del otro conductor",
+    instruccion: INSTRUCCION_DEFAULT,
+  },
+  vista_frontal: {
+    titulo: "Foto frontal de tu auto",
+    instruccion: INSTRUCCION_DEFAULT,
+  },
+  vista_lateral_izq: {
+    titulo: "Foto lateral izquierda",
+    instruccion: INSTRUCCION_DEFAULT,
+  },
+  vista_lateral_der: {
+    titulo: "Foto lateral derecha",
+    instruccion: INSTRUCCION_DEFAULT,
+  },
+  vista_trasera: {
+    titulo: "Foto trasera",
+    instruccion: INSTRUCCION_DEFAULT,
+  },
+  danios: {
+    titulo: "Foto de los daños",
+    instruccion: "Enfocá bien la zona golpeada",
+  },
+};
+
+/** Tipos legacy + mini-app (schema / dashboard). */
+export const FOTO_TIPOS = [
+  ...FOTO_TIPOS_MINI_APP,
   "patente_otro",
   "danio_propio",
   "carnet",
@@ -20,22 +82,26 @@ export const FOTO_TIPOS = [
 export type FotoTipo = (typeof FOTO_TIPOS)[number];
 
 export const FOTO_TIPO_LABELS: Record<FotoTipo, string> = {
-  dni_asegurado: "DNI del asegurado",
-  cedula_verde_asegurado: "Cédula verde del asegurado",
-  licencia_asegurado: "Licencia de conducir del asegurado",
-  dni_tercero: "DNI del tercero",
-  cedula_verde_tercero: "Cédula verde del tercero",
-  licencia_tercero: "Licencia de conducir del tercero",
-  vista_frontal: "Vista frontal del vehículo",
-  vista_lateral_izq: "Vista lateral izquierda",
-  vista_lateral_der: "Vista lateral derecha",
-  vista_trasera: "Vista trasera del vehículo",
-  danios: "Foto de los daños",
+  dni_asegurado: CAPTURA_TIPO_CONFIG.dni_asegurado.titulo,
+  cedula_verde_asegurado: CAPTURA_TIPO_CONFIG.cedula_verde_asegurado.titulo,
+  licencia_asegurado: CAPTURA_TIPO_CONFIG.licencia_asegurado.titulo,
+  dni_tercero: CAPTURA_TIPO_CONFIG.dni_tercero.titulo,
+  cedula_verde_tercero: CAPTURA_TIPO_CONFIG.cedula_verde_tercero.titulo,
+  licencia_tercero: CAPTURA_TIPO_CONFIG.licencia_tercero.titulo,
+  vista_frontal: CAPTURA_TIPO_CONFIG.vista_frontal.titulo,
+  vista_lateral_izq: CAPTURA_TIPO_CONFIG.vista_lateral_izq.titulo,
+  vista_lateral_der: CAPTURA_TIPO_CONFIG.vista_lateral_der.titulo,
+  vista_trasera: CAPTURA_TIPO_CONFIG.vista_trasera.titulo,
+  danios: CAPTURA_TIPO_CONFIG.danios.titulo,
   patente_otro: "Patente del otro vehículo",
   danio_propio: "Daño propio",
   carnet: "Carnet",
   seguro_otro: "Seguro del otro",
 };
+
+export function isFotoTipoMiniApp(value: string): value is FotoTipoMiniApp {
+  return (FOTO_TIPOS_MINI_APP as readonly string[]).includes(value);
+}
 
 export function isFotoTipo(value: string): value is FotoTipo {
   return (FOTO_TIPOS as readonly string[]).includes(value);

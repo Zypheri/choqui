@@ -1,30 +1,42 @@
-import { notFound } from "next/navigation";
+import { LinkInvalido } from "@/components/link-invalido";
+import {
+  CAPTURA_TIPO_CONFIG,
+  isFotoTipoMiniApp,
+} from "@/lib/captura-tipos";
+import {
+  contarFotosCompletadas,
+  siniestroExiste,
+} from "@/lib/siniestro-captura";
 import { CapturaFotoForm } from "./captura-foto-form";
-import { FOTO_TIPO_LABELS, isFotoTipo } from "@/lib/captura-tipos";
 
 interface CapturaPageProps {
   params: { siniestroId: string; tipo: string };
 }
 
-export default function CapturaPage({ params }: CapturaPageProps) {
+export default async function CapturaPage({ params }: CapturaPageProps) {
   const { siniestroId, tipo } = params;
 
-  if (!isFotoTipo(tipo)) {
-    notFound();
+  if (!isFotoTipoMiniApp(tipo)) {
+    return <LinkInvalido />;
   }
 
-  const label = FOTO_TIPO_LABELS[tipo];
+  const existe = await siniestroExiste(siniestroId);
+  if (!existe) {
+    return <LinkInvalido />;
+  }
+
+  const config = CAPTURA_TIPO_CONFIG[tipo];
+  const fotosCompletadas = await contarFotosCompletadas(siniestroId);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-2 text-xl font-semibold text-gray-900">{label}</h1>
-        <p className="mb-6 text-sm text-gray-500">
-          Sacá la foto con la cámara. Se guardan ubicación y hora de captura
-          para verificarla.
-        </p>
-        <CapturaFotoForm siniestroId={siniestroId} tipo={tipo} />
-      </div>
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-8">
+      <CapturaFotoForm
+        siniestroId={siniestroId}
+        tipo={tipo}
+        titulo={config.titulo}
+        instruccion={config.instruccion}
+        fotosCompletadasInicial={fotosCompletadas}
+      />
     </main>
   );
 }

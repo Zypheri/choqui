@@ -103,7 +103,7 @@ CREATE TABLE public.fotos (
       ]
     )
   ),
-  url text NOT NULL,
+  storage_path text NOT NULL,
   fuente text NOT NULL DEFAULT 'whatsapp'::text CHECK (
     fuente = ANY (ARRAY['whatsapp'::text, 'mini_app'::text])
   ),
