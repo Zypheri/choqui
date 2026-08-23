@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -82,9 +83,18 @@ export function DashboardSidebar({ userEmail }: DashboardSidebarProps) {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col bg-sidebar-bg">
-      <div className="px-5 py-6">
-        <p className="text-lg font-semibold tracking-tight text-white">Choqui</p>
-        <p className="mt-0.5 text-xs text-white/60">Aseguradora demo</p>
+      <div className="px-5 py-5">
+        <Link href="/dashboard/siniestros" className="inline-flex items-center">
+          <Image
+            src="/choqui-logo.png"
+            alt="Choqui"
+            width={120}
+            height={48}
+            className="h-10 w-auto"
+            priority
+          />
+        </Link>
+        <p className="mt-2 text-xs text-white/60">Aseguradora demo</p>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
