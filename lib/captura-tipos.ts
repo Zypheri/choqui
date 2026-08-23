@@ -16,6 +16,9 @@ export type FotoTipoMiniApp = (typeof FOTO_TIPOS_MINI_APP)[number];
 
 export const TOTAL_FOTOS_CHECKLIST = FOTO_TIPOS_MINI_APP.length;
 
+/** Ubicación + 11 documentos del checklist mini-app. */
+export const TOTAL_CHECKLIST_PASOS = TOTAL_FOTOS_CHECKLIST + 1;
+
 interface CapturaTipoConfig {
   titulo: string;
   instruccion: string;

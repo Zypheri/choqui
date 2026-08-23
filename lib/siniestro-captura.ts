@@ -21,6 +21,24 @@ export async function siniestroExiste(siniestroId: string): Promise<boolean> {
   return Boolean(data?.id);
 }
 
+export async function tieneUbicacionReportada(
+  siniestroId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("siniestros")
+    .select("ubicacion_reportada_lat")
+    .eq("id", siniestroId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error consultando ubicación:", error.message);
+    return false;
+  }
+
+  return data?.ubicacion_reportada_lat != null;
+}
+
 export async function listarTiposFaltantes(
   siniestroId: string
 ): Promise<FotoTipoMiniApp[]> {

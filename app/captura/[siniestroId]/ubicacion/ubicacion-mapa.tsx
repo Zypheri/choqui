@@ -8,15 +8,15 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
-import { ConfirmacionPaso } from "@/components/confirmacion-paso";
 import { createClient } from "@/lib/supabase/client";
 import "leaflet/dist/leaflet.css";
 
 interface UbicacionMapaProps {
   siniestroId: string;
+  onSuccess: () => void;
 }
 
-type Status = "locating" | "ready" | "saving" | "success" | "error";
+type Status = "locating" | "ready" | "saving" | "error";
 
 interface LatLng {
   lat: number;
@@ -65,7 +65,7 @@ function DraggableMarker({
   );
 }
 
-export function UbicacionMapa({ siniestroId }: UbicacionMapaProps) {
+export function UbicacionMapa({ siniestroId, onSuccess }: UbicacionMapaProps) {
   const [coords, setCoords] = useState<LatLng | null>(null);
   const [mapCenter, setMapCenter] = useState<LatLng | null>(null);
   const [status, setStatus] = useState<Status>("locating");
@@ -129,32 +129,13 @@ export function UbicacionMapa({ siniestroId }: UbicacionMapaProps) {
         .eq("id", siniestroId);
 
       if (error) throw new Error(error.message);
-
-      try {
-        await fetch("/api/trigger-paso", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            siniestro_id: siniestroId,
-            paso: "ubicacion",
-          }),
-        });
-      } catch (error) {
-        // No bloquear la confirmación: la ubicación ya se guardó.
-        console.error("No se pudo notificar el paso completado:", error);
-      }
-
-      setStatus("success");
+      onSuccess();
     } catch (err) {
       setStatus("error");
       setErrorMessage(
         err instanceof Error ? err.message : "No se pudo guardar la ubicación"
       );
     }
-  }
-
-  if (status === "success") {
-    return <ConfirmacionPaso />;
   }
 
   if (status === "locating" || !coords || !mapCenter) {

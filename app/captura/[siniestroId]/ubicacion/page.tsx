@@ -2,9 +2,9 @@ import dynamic from "next/dynamic";
 import { LinkInvalido } from "@/components/link-invalido";
 import { siniestroExiste } from "@/lib/siniestro-captura";
 
-const UbicacionMapa = dynamic(
+const UbicacionStandalone = dynamic(
   () =>
-    import("./ubicacion-mapa").then((mod) => mod.UbicacionMapa),
+    import("./ubicacion-standalone").then((mod) => mod.UbicacionStandalone),
   {
     ssr: false,
     loading: () => (
@@ -29,7 +29,7 @@ export default async function UbicacionPage({ params }: UbicacionPageProps) {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-8">
-      <UbicacionMapa siniestroId={siniestroId} />
+      <UbicacionStandalone siniestroId={siniestroId} />
     </main>
   );
 }

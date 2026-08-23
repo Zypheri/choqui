@@ -3,6 +3,7 @@ import { LinkInvalido } from "@/components/link-invalido";
 import {
   listarTiposFaltantes,
   siniestroExiste,
+  tieneUbicacionReportada,
 } from "@/lib/siniestro-captura";
 import { DocumentacionWizard } from "./documentacion-wizard";
 
@@ -20,9 +21,15 @@ export default async function DocumentacionPage({
     return <LinkInvalido />;
   }
 
-  const tiposFaltantes = await listarTiposFaltantes(siniestroId);
+  const [tieneUbicacion, tiposFaltantes] = await Promise.all([
+    tieneUbicacionReportada(siniestroId),
+    listarTiposFaltantes(siniestroId),
+  ]);
 
-  if (tiposFaltantes.length === 0) {
+  const checklistCompleto =
+    tieneUbicacion && tiposFaltantes.length === 0;
+
+  if (checklistCompleto) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-8">
         <ConfirmacionPaso />
@@ -34,6 +41,7 @@ export default async function DocumentacionPage({
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-8">
       <DocumentacionWizard
         siniestroId={siniestroId}
+        tieneUbicacionInicial={tieneUbicacion}
         tiposFaltantesInicial={tiposFaltantes}
       />
     </main>
